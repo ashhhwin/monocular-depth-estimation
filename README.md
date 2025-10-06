@@ -1,4 +1,3 @@
-```markdown
 # Dashcam Distance Estimation
 
 A comprehensive deep learning pipeline for estimating distances to lead vehicles in dashcam imagery. The system integrates vehicle detection, monocular depth estimation, and a custom regression model with attention mechanisms.
@@ -189,4 +188,4 @@ MIT License
 - Apple DepthPro for monocular depth estimation
 - EfficientNet architecture by Google Research
 - PyTorch and timm libraries
-```
+
