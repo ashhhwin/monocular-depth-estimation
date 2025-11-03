@@ -10,7 +10,7 @@ Functions:
 - undistort_image(image): Removes camera lens distortion.
 - apply_white_balance(image): Corrects color cast using Gray World algorithm.
 - apply_clahe(image): Enhances local contrast.
-- adjust_brightness_contrast(image): Adjusts global brightness/contrast.
+- apply_gamma_correction(image): Adjusts non-linear brightness (good for shadows).
 - preprocess_image(image): Runs the full pipeline on a single image.
 
 Standalone Usage:
@@ -24,7 +24,7 @@ import argparse
 from glob import glob
 from tqdm import tqdm
 
-# Import all parameters from config file
+# Import all parameters from our config file
 try:
     import config
 except ImportError:
@@ -138,28 +138,40 @@ def apply_clahe(image: np.ndarray) -> np.ndarray:
     return cv2.cvtColor(lab_enhanced, cv2.COLOR_LAB2BGR)
 
 
-def adjust_brightness_contrast(image: np.ndarray) -> np.ndarray:
+def apply_gamma_correction(image: np.ndarray) -> np.ndarray:
     """
-    Adjusts the global brightness and contrast of the image.
+    Applies non-linear gamma correction to the image.
+    
+    This is superior to linear brightness/contrast as it brightens
+    shadows and mid-tones more than highlights, preventing blowouts.
     
     Args:
         image: The input image (NumPy array).
         
     Returns:
-        The adjusted image.
+        The gamma-corrected image.
     """
-    # new_image = alpha * image + beta
-    # Uses cv2.convertScaleAbs for faster processing and clipping
-    return cv2.convertScaleAbs(
-        image, 
-        alpha=config.CONTRAST_ALPHA, 
-        beta=config.BRIGHTNESS_BETA
-    )
+    # Build a lookup table (LUT) mapping pixel values [0, 255]
+    # to their new gamma-corrected values.
+    # We use config.GAMMA, but apply the inverse formula.
+    inv_gamma = 1.0 / config.GAMMA
+    
+    # This creates a 256-element array
+    lut = np.array([
+        ((i / 255.0) ** inv_gamma) * 255
+        for i in np.arange(0, 256)
+    ]).astype("uint8")
+    
+    # Apply the LUT to every pixel in the image (very fast)
+    return cv2.LUT(image, lut)
 
+
+# --- The Main Pipeline Function ---
 
 def preprocess_image(image: np.ndarray) -> np.ndarray:
     """
     Runs the full preprocessing pipeline on a single image.
+    This is the function you'll likely import into your training/inference scripts.
     
     Args:
         image: The raw input image (NumPy array).
@@ -176,8 +188,8 @@ def preprocess_image(image: np.ndarray) -> np.ndarray:
     # Step 3: Enhance local contrast
     processed = apply_clahe(processed)
     
-    # Step 4: Final global brightness/contrast adjustment
-    processed = adjust_brightness_contrast(processed)
+    # Step 4: Final non-linear brightness adjustment
+    processed = apply_gamma_correction(processed)
     
     return processed
 
@@ -241,7 +253,7 @@ if __name__ == "__main__":
             
             # 3. Save the result
             filename = os.path.basename(img_path)
-            output_path = os.path.join(args.output_dir, filename)
+            output_path = os..path.join(args.output_dir, filename)
             cv2.imwrite(output_path, processed_image)
             
         except Exception as e:
