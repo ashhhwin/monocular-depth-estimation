@@ -253,7 +253,7 @@ if __name__ == "__main__":
             
             # 3. Save the result
             filename = os.path.basename(img_path)
-            output_path = os..path.join(args.output_dir, filename)
+            output_path = os.path.join(args.output_dir, filename)
             cv2.imwrite(output_path, processed_image)
             
         except Exception as e:
