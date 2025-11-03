@@ -20,13 +20,17 @@ DistCoeff = np.array([-0.393931, 0.185580, 0.000120, 0.000002, 0.0])
 # 0.0 = Crop to valid pixels only, no black borders.
 UNDISTORT_ALPHA = 0.0
 
+
 # --- 2. CLAHE (Contrast Limited Adaptive Histogram Equalization) ---
 CLAHE_CLIP_LIMIT = 2.0
 CLAHE_TILE_GRID_SIZE = (8, 8)
 
-# --- 3. Brightness & Contrast ---
-# Formula: new_image = (CONTRAST_ALPHA * old_image) + BRIGHTNESS_BETA
-# 1.0 = No change in contrast
-# 0 = No change in brightness
-CONTRAST_ALPHA = 1.1   # Slightly increase contrast
-BRIGHTNESS_BETA = 5      # Slightly increase brightness
+
+# --- 3. Gamma Correction (Non-linear Brightness) ---
+
+# > 1.0 : Brightens shadows/mid-tones (good for day/shadows)
+# < 1.0 : Darkens mid-tones (good for over-exposed/fog)
+# 1.0 : No change
+#
+# A good value for shadow detail is 1.5
+GAMMA = 1.5
