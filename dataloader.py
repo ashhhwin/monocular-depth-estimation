@@ -91,26 +91,57 @@ class GeometricDistanceDataset(Dataset):
             full_img = self.normalize(full_img)
             patch = self.normalize(patch)
         
-        # Calculate geometric features (normalized)
+        # === NEW: Calculate 10 geometric features (original bbox coordinates) ===
         img_width = sample['img_width']
         img_height = sample['img_height']
         
-        bbox_width = x2 - x1
-        bbox_height = y2 - y1
-        bbox_center_x = (x1 + x2) / 2
-        bbox_center_y = (y1 + y2) / 2
-        bbox_aspect_ratio = bbox_width / bbox_height if bbox_height > 0 else 0
+        bbox_x1, bbox_y1, bbox_x2, bbox_y2 = sample['bbox']
+
+        bbox_width = bbox_x2 - bbox_x1
+        bbox_height = bbox_y2 - bbox_y1
+        bbox_center_x = (bbox_x1 + bbox_x2) / 2
+        bbox_center_y = (bbox_y1 + bbox_y2) / 2
+        bbox_aspect_ratio = bbox_height / (bbox_width + 1e-6)
+
+        feature_1 = bbox_width / img_width
+        feature_2 = bbox_height / img_height
+        feature_3 = bbox_y1 / img_height
+        feature_4 = bbox_y2 / img_height
+        feature_5 = bbox_center_x / img_width
+        feature_6 = bbox_center_y / img_height
+        feature_7 = bbox_aspect_ratio
+        # Features 8-10: Calibrated features using camera matrix
+        fx = 2429.865965
+        fy = 2424.492001
+        cx = 1192.584876
+        cy = 1015.978074
+        AVG_CAR_HEIGHT = 1.5
+        
+        # Feature 8: Distance estimate from bbox height
+        distance_estimate = (AVG_CAR_HEIGHT * fy) / (bbox_height + 1e-6)
+        distance_estimate_norm = np.clip(distance_estimate / 100.0, 0, 1)
+        
+        # Feature 9: Vertical viewing angle
+        vertical_angle = np.arctan2(bbox_y2 - cy, fy)
+        vertical_angle_norm = (vertical_angle + np.pi/2) / np.pi
+        
+        # Feature 10: Angular height
+        angular_height = 2 * np.arctan(bbox_height / (2 * fy))
+        angular_height_norm = angular_height / (np.pi/2)
         
         geometric_features = torch.tensor([
-            bbox_width / img_width,           # bbox_width_norm
-            bbox_height / img_height,         # bbox_height_norm
-            y1 / img_height,                  # bbox_ymin_norm
-            y2 / img_height,                  # bbox_ymax_norm
-            bbox_center_x / img_width,        # bbox_center_x_norm
-            bbox_center_y / img_height,       # bbox_center_y_norm
-            bbox_aspect_ratio                 # bbox_aspect_ratio
+            feature_1,
+            feature_2,
+            feature_3,
+            feature_4,
+            feature_5,
+            feature_6,
+            feature_7,
+            distance_estimate_norm,
+            vertical_angle_norm,
+            angular_height_norm
         ], dtype=torch.float32)
-        
+
         # Ground truth
         ground_truth = torch.tensor(sample['ground_truth'], dtype=torch.float32)
         
@@ -119,7 +150,6 @@ class GeometricDistanceDataset(Dataset):
             'car_patch': patch,
             'geometric': geometric_features
         }, ground_truth
-
 
 class DepthDistanceDataset(Dataset):
     """
@@ -409,5 +439,6 @@ if __name__ == "__main__":
     print(f"  Car patch: {inputs['car_patch'].shape}")
     print(f"  Depth features: {inputs['depth_features'].shape}")
     print(f"  Targets: {targets.shape}")
+
 
 '''
